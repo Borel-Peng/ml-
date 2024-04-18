@@ -1,0 +1,698 @@
+\documentclass{beamer}
+
+\usepackage{ctex}
+\usefonttheme{serif}
+
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usepackage{beamerbasetitle}
+\usepackage{hyperref}
+
+%\usetheme{Madrid}%原本是Rochester
+% 标题
+\title{Generalization Bounds for Federated Learning:\\ Fast Rates, Unparticipating Clients and Unbounded Losses}
+\author{彭博睿}
+\institute{中国人民大学统计学院}
+
+\date{\today}
+
+\begin{document}
+
+\frame{\titlepage}
+
+\begin{frame}{汇报大纲}
+    % 有序列表
+    % 等做完了要加过渡的页面
+    \begin{enumerate}
+        \item 引入
+        \begin{enumerate}
+            \item PAC理论
+            \item 联邦学及其相关研究
+            \item 本文相关研究
+        \end{enumerate}
+        \item 研究假设：双层分布框架 
+        \item 更快的学习率：在双层分布框架下
+        \begin{enumerate}
+            \item 对于参与客户
+            \item 对于未参与客户
+        \end{enumerate}
+        \item 次韦伯分布损失函数：学习率
+        \begin{enumerate}
+            \item 小球条件下参与客户的学习率
+            \item 小球条件下未参与客户的学习率
+        \end{enumerate}
+        \item 相关工作
+        \item 总结
+    \end{enumerate}
+\end{frame}
+
+\begin{frame}
+\frametitle{1.1 引入：PAC理论}
+\begin{definition}[假设空间]
+    \begin{equation*}
+        \mathcal{H}:\mathcal{X}\rightarrow\mathcal{Y}
+    \end{equation*}
+其中$\mathcal{X}$是输入空间，$\mathcal{Y}$是输出空间。$\mathcal{H}$是假设空间，包含所有可能的假设函数。
+\end{definition}
+\begin{definition}[泛化误差]
+    对于假设$h \in \mathcal{H}$，真实的函数关系$y = c(x)$，真实的数据分布$\mathcal{D}$，$h$的 \bf{泛化误差}：
+    \begin{equation*}
+        R(h)=\mathbb{E}_{x\sim\mathcal{D}}[1_{h(x)\neq c(x)}]
+    \end{equation*}
+\end{definition}
+\end{frame}
+
+
+\begin{frame}
+    \frametitle{1.1 引入：PAC理论}
+    PAC理论中重要的概念：过度误差(excess error)是假设函数$h\in\mathcal{H}$的误差$R(h)$和最优误差$R^{*}$(也叫贝叶斯误差)之间的差值，常常被这样分解（本篇论文也用了类似技巧）：
+    \begin{equation*}
+        R(h)-R^{*}=(R(h)-\inf_{h \in \mathcal{H}} R(h))+(\inf_{h \in \mathcal{H}} R(h)-R^{*})
+    \end{equation*}
+    前者成为估计误差(estimation error)，后者成为逼近误差(approximation error)。
+    \begin{center} % 使图片居中
+        \includegraphics[width=0.5\textwidth]{D:/vs_cpp_py/ml_semester4/mid_pre/tex_files/pictures/errorillustration.png}
+    \end{center}
+
+\end{frame}
+
+
+\begin{frame}
+    \frametitle{1.1 引入：PAC理论}
+理论机器学习采用了PAC(Probilistically Approximately Correct)框架，所谓“概率近似正确”。常常得到的结论是：以概率$1-\delta$，误差小于$\epsilon$。
+比如著名的霍夫丁不等式(Hoeffding's inequality)就可以用PAC的逻辑去理解：\\
+\begin{exampleblock}{霍夫丁不等式}
+    令 $X_1，\dots，X_n$ 为独立的随机变量，且 $X_i\in[a,b] ， i=1，\dots，n $。这些随机变量的经验均值可表示为：
+    $\bar{X}=\frac{X_1+\dots+X_n}{n}$\\
+    
+    霍夫丁不等式叙述如下：
+    
+    $\forall{t>0}，\quad P(\bar{X}-E[\bar{X}]\ge t)\le exp(-\frac{2n^2t^2}{\begin{matrix} \sum_{i=1}^n (b_i-a_i)^2 \end{matrix}})$
+\end{exampleblock}
+\end{frame}
+
+\begin{frame}{1.2 引入：联邦学习及其研究}
+% 分成两列
+\begin{columns}[T] % align columns
+    \begin{column}{.5\textwidth}
+        联邦学习本质上是一种保证数据隐私的分布式机器学习技术。
+    \includegraphics[width=1\textwidth]{pictures/fr_eg.png}
+    % 添加图片来源
+    {\tiny{图片来源：\url{https://www.ai4opt.org/sites/default/files/slides/kale.pdf}}}\\
+    选择模型、本地训练、上传参数、聚合参数、更新模型。
+    \end{column}%
+    \begin{column}{.5\textwidth}
+    \pause
+    \begin{block}{联邦学习遇到的困难}
+        \begin{itemize}
+            \item 客户的真实数据分布收到本地环境影响{\color{red}{(Non-IID)}}，文中用了“Heterogeneous”来表示这种异质性。
+            \pause
+            \item 异质性学习导致泛化误差很难估计
+            \pause
+            \item 许多客户端可能不参与训练{\color{red}{(Unparticipating Clients)}}
+            \pause
+            \item 未参与客户能否从联邦学习中获益？
+        \end{itemize}
+    \end{block}
+    \end{column}%
+    \end{columns}
+\end{frame}
+\begin{frame}
+    \frametitle{1.3 引入：本文相关研究}
+    \begin{columns}[T] % align columns
+        \begin{column}{.5\textwidth}
+        \begin{exampleblock}{已有研究成果}
+            \begin{itemize}
+                \item {\color{red}{最优化}}：训练误差
+                \item {\color{red}{参与}}客户
+                \item {\color{red}{同质性}}数据：IID
+                \item {\color{red}{有界}}损失函数
+            \end{itemize}
+        \end{exampleblock}
+        \end{column}%
+
+
+        \begin{column}{.5\textwidth}
+        \begin{alertblock}{本文成果}
+            \begin{itemize}
+                \item {\color{red}{泛化误差}}：测试误差
+                \item {\color{red}{未参与}}客户
+                \item {\color{red}{异质性}}数据：Non-IID
+                \item {\color{red}{无界}}损失函数
+            \end{itemize}
+        \end{alertblock}
+        \end{column}%
+        \end{columns}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{2. 研究假设：双层分布框架}
+    以下是一些符号的定义：
+    \begin{itemize}
+        \item $\mathcal{X}\subseteq \mathbb{R}^{k},\mathcal{Y}\subseteq \mathbb{R},Z=(X,Y)\in{\mathcal{X}\times\mathcal{Y}} $：输入输出空间,随机变量$Z$
+        \item $\mathcal{D}$：Z的真实分布；$P$：分布$\mathcal{D}$的\textbf{元分布}。 
+        \item 总客户数量$M$，参与客户数量$m$，而且$ m\ll M $
+        \item $D_{i}$是客户$i$的分布。$\{D_{1},\dots,D_{m}\}$是根据$P$从$\mathcal{D}$独立同分布采样得到的。数据样本$S_{i}=\{Z_{i}^{j}\}_{j=1}^{n}$是从$D_{i}$中独立同分布采样得到的。
+        \item $h \in \mathcal{H}$：假设函数，也就是模型
+        \item $l(h,Z_{i})$：客户端$i$的损失函数
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{2. 研究假设：双层分布框架}
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/2_level.png}
+    \end{center}
+\begin{center}
+\pause
+\textbf{{\color{red}{问题：未参与用户能不能从联邦学习中获益？}}}
+\end{center}
+\end{frame}
+\begin{frame}
+    \frametitle{2. 研究假设：双层分布框架}
+    \begin{definition}[总体风险]
+        \begin{equation*}
+            \mathcal{L}_{P}(h) = \mathbb{E}_{D_{i}\sim P}[\mathbb{E}_{Z\sim D_{i}}[l(h(X),Y)]]
+        \end{equation*}
+        对应的最优总体风险函数是：
+        \begin{equation*}
+            h^{*} = \arg\min_{h\in \mathcal{H}}\mathcal{L}_{P}(h)
+        \end{equation*}
+    \end{definition}
+    然而，元分布$P$是未知的、客户的真实分布$D$也是未知的，以上的式子仅用于理论分析。我们要用经验风险来估计总体风险，而不是直接计算。
+\end{frame}
+\begin{frame}
+    \frametitle{2. 研究假设：双层分布框架}
+    整篇文章都是围绕该问题展开。为了进一步分析，我们在该框架下定义：
+    \begin{definition}[经验风险]
+        \begin{equation*}
+            \mathcal{L}_{S}(h) = \frac{1}{m}\sum_{i=1}^{m}\frac{1}{n}\sum_{j=1}^{n}l(h(X_{i}^{j}),Y_{i}^{j})
+        \end{equation*}
+        其中$(X_{i}^{j},Y_{i}^{j})$表示客户$i$的第$j$个样本，$S = \cup_{i=1}^{m}S_{i}$
+
+        对应的最优经验风险函数是：
+        \begin{equation*}
+            \hat{h} = \arg\min_{h\in \mathcal{H}}\mathcal{L}_{S}(h)
+        \end{equation*}
+    \end{definition}
+    经验风险就是训练误差，可以直接计算。特别地，$\hat{h}$就是联邦学习学到的模型。
+\end{frame}
+\begin{frame}
+    \frametitle{2. 研究假设：双层分布框架}
+    为了在双层分布框架下分析\textbf{泛化误差}，我们定义了{\color{red}{半经验风险}}(semi-empirical risk)。
+    \begin{definition}[半经验风险]
+        首先定义\textbf{半经验分布}$D = \frac{1}{m}\sum_{i=1}^{m}D_{i}$\\
+        \begin{equation*}
+            \mathcal{L}_{D}(h) = \frac{1}{m}\sum_{i=1}^{m}\mathbb{E}_{Z\sim D_{i}}[l(h(X),Y)]
+        \end{equation*}
+        对应的最优半经验风险函数是：
+        \begin{equation*}
+            \hat{h}^{*} = \arg\min_{h\in \mathcal{H}}\mathcal{L}_{D}(h)
+        \end{equation*}
+    \end{definition}
+\end{frame}
+\begin{frame}
+    \frametitle{2. 研究假设：双层分布框架}
+    用一张图来表现它们的关系：
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/relationship.png}
+    \end{center}
+\end{frame}
+\begin{frame}
+    \frametitle{2. 研究假设：双层分布框架}
+    \begin{alertblock}{过度误差和半过度误差}
+        \begin{itemize}
+            \item 半过度误差$\mathcal{L}_{D}(\hat{h})-\mathcal{L}_{D}(\hat{h}^{*})$：反映了已经学到的模型$\hat{h}$在半经验分布$D$上的、未出现数据上的表现。
+            \item 过度误差$\mathcal{L}_{P}(\hat{h})-\mathcal{L}_{P}(h^{*})$：反映了已经学到的模型$\hat{h}$在未参与客户上的表现。
+        \end{itemize}
+    \end{alertblock}
+\end{frame}
+\begin{frame}
+    \frametitle{2. 研究假设：双层分布框架}
+    % 有待填充
+    在此框架下，我们再借助两个概念，来得到第一个结论。这里是VC维（PAC理论的奠基概念之一）：
+    \begin{definition}[Vapnik-Chervonenkis维度]
+        \begin{center}
+            \includegraphics[width=1\textwidth]{pictures/def1.png}
+        \end{center}
+    \end{definition}
+    VC维是衡量假设空间的复杂度的一个重要指标。（建议看\url{https://tangshusen.me/2018/12/09/vc-dimension/}）\\
+    def1依赖数据集，def2不需要（打散的最大数据集）！\\
+    直线VC维是p+1。
+
+\end{frame}
+\begin{frame}
+    \frametitle{2. 研究假设：双层分布框架}
+    \includegraphics[width=1\textwidth]{pictures/thm1.png}
+    \pause
+    \begin{alertblock}{Remark}
+        \begin{itemize}
+            \item 注意，这里不是一个普通的不等式，而是“概率近似正确”。
+            \item 左边$\mathcal{L}_{P}(\hat{h})-\mathcal{L}_{P}(h^{*})$是“过度误差”，也就是模型在M个用户中的表现。
+            $\hat{h}$是训练模型，是在m个参与用户中训练得到的。通俗来讲，定理1告诉我们参与训练的m越大，过度风险越小。
+            \item 我们可以积极地回答刚开始提出的问题：从平均表现上来说，未参与用户也能从联邦学习中获益。
+        \end{itemize}
+    \end{alertblock}
+\end{frame}
+\begin{frame}
+    \frametitle{2. 研究假设：双层分布框架}
+    \begin{alertblock}{结论的缺陷}
+        在假设条件下过度风险$\mathcal{L}_{P}(\hat{h})-\mathcal{L}_{P}(h^{*})$可以被$O(\sqrt{\frac{1}{mn}}+\sqrt{\frac{1}{m}})$控制。
+        但是当参与客户异质性很高时，
+        $\mathcal{L}_{P}(h^{*})$可能会非常大（难以兼顾所有客户）。这导致未参与客户的泛化误差$\mathcal{L}_{P}(\hat{h})$也会很大。
+        即，\textbf{异质性高时，不能指望一个通用的模型能总是表现良好。}
+    \end{alertblock}
+    实验结果(虽然证明有VC维，实验用的是神经网络)。
+    \begin{center}
+        \includegraphics[width=0.5\textwidth]{pictures/figure2.png}
+    \end{center}
+\end{frame}
+
+\begin{frame}
+    \frametitle{2. 研究假设：双层分布框架}
+    \begin{alertblock}{结论的缺陷}
+        在假设条件下过度风险$\mathcal{L}_{P}(\hat{h})-\mathcal{L}_{P}(h^{*})$可以被$O(\sqrt{\frac{1}{mn}}+\sqrt{\frac{1}{m}})$控制。
+        但是当参与客户异质性很高时，
+        $\mathcal{L}_{P}(h^{*})$可能会非常大（难以兼顾所有客户）。这导致未参与客户的泛化误差$\mathcal{L}_{P}(\hat{h})$也会很大。
+        即，\textbf{异质性高时，不能指望一个通用的模型能总是表现良好。}
+    \end{alertblock}
+    我的复现结果：（没给源码，自己模拟的）
+    \begin{center}
+        \includegraphics[width=0.5\textwidth]{pictures/experiment.png}
+    \end{center}
+\end{frame}
+
+\begin{frame}{3. 更快的学习率：在双层分布框架下}
+    回忆一下：
+    \pause
+    \begin{itemize}
+        \item $\hat{h}$是训练模型，经验风险最小化得到的
+        \item $h^{*}$是最优模型，总体风险最小化得到的
+        \pause
+        \item 半过度风险$\mathcal{L}_{D}(\hat{h})-\mathcal{L}_{D}(\hat{h^{*}})$反映了\textbf{参与客户}的学习率。
+        \item 过度风险$\mathcal{L}_{P}(\hat{h})-\mathcal{L}_{P}(h^{*})$反映了\textbf{未参与客户}的学习率。
+    \end{itemize}
+    为了获得更快的学习率，我们对损失函数$l$、假设空间$\mathcal{H}$、半经验分布$D$、元分布$P$进行了一些合理的假设。
+\end{frame}
+\begin{frame}
+    \frametitle{3. 更快的学习率：在双层分布框架下}
+    假设1：李普希茨条件
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/lipchitz.png}
+    \end{center}
+    \pause
+    假设2：伯恩斯坦条件
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/ber_def.png}
+    \end{center}
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/ber_con.png}
+    \end{center}
+\end{frame}
+\begin{frame}
+    \frametitle{3. 更快的学习率：在双层分布框架下}
+    以下是作者的解释：
+    \begin{itemize}
+        \item 为了得到更快的学习率，大家都会给很多假设，而伯恩斯坦条件常常在理论机器学习中使用。
+        \item 该条件并不苛刻。比如：
+        \begin{itemize}
+            \item 任何有界的概率分布函数；
+            \item 回归问题中严格凸的损失函数；
+            \item 强凸且李普希茨连续的损失函数。
+            \item 均方误差且假设函数集合为凸。
+        \end{itemize}
+    \end{itemize}
+    \pause
+    以下是我对上面两个假设的理解：
+    \begin{itemize}
+        \item 根据数学分析的知识，李普希茨条件意味着损失函数
+        \textbf{一致连续}。这个要求比连续性更强，要求连续并且不震荡变化，比如$y=\sin(x^{2})$就不满足。
+        我认为该假设很合理，因为常用的损失函数都满足该条件。
+        \item \textbf{伯恩斯坦条件}：对半经验分布$D$和元分布$P$进行限制，为了得到更紧的界（后面还会再理解一次）。
+    \end{itemize}
+\end{frame}
+\begin{frame}
+    \frametitle{3. 更快的学习率：在双层分布框架下}
+    假设3：一致熵条件(Uniform Entropy Condition)
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/uniformentropy.png}
+    \end{center}
+    \pause
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/uni_entr_aspt.png}
+    \end{center}
+\end{frame}
+\begin{frame}
+    \frametitle{3. 更快的学习率：在双层分布框架下}
+    作者提到，假设3是一个很轻微的假设。下面是一些常见的满足假设3的函数：
+    \begin{itemize}
+        \item 函数集合有界；
+        \item $\mathcal{H}$的VC维是有限的；
+        \item 如果令$\epsilon \in (0,1)$，那么所有的欧几里得单位球$\mathcal{B}\subseteq \mathbb{R}^{d}$都满足。
+        \item 如果$\mathcal{H}$是以k为核函数的希尔伯特再生核空间，且k的秩为d，那么满足假设。
+    \end{itemize}
+\end{frame}
+\begin{frame}
+    \frametitle{3.1 更快的学习率：对于参与客户}
+    \begin{itemize}
+    \item 回忆：半过度风险$\mathcal{L}_{D}(\hat{h})-\mathcal{L}_{D}(\hat{h^{*}})$反映了\textbf{参与客户}的学习率。
+    \end{itemize}
+    \pause
+    在之前的假设下，推导出了以下结论：
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/thm2.png}
+    \end{center}
+\end{frame}
+\begin{frame}
+    \frametitle{3.1 更快的学习率：对于参与客户}
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/thm2.png}
+    \end{center}
+    \begin{alertblock}{Remark}
+        \begin{itemize}
+            \item 收敛速率（以概率）在$O(\frac{1}{\sqrt{mn}})$到$O(\frac{1}{mn})$之间，对应$\beta^{'}$取0和1。（来自伯恩斯坦条件的假设）
+            \item 在伯恩斯坦条件下，当增加参与客户数量m和本地数据数量n时，半经验风险收敛更快。
+            \item 该结论是PAC形式。而之前的研究都是期望形式。
+        \end{itemize}
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}
+    \frametitle{3.2 更快的学习率：对于未参与客户}
+    \begin{itemize}
+        \item 回忆：过度风险$\mathcal{L}_{P}(\hat{h})-\mathcal{L}_{P}(h^{*})$反映了\textbf{未参与客户}的学习率。
+    \end{itemize}
+    \pause
+    下面的结论是已有研究中最紧的界！
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/thm3.png}
+    \end{center}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{3.2 更快的学习率：对于未参与客户}
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/thm3.png}
+    \end{center}
+    \begin{alertblock}{Remark}
+        \begin{itemize}
+            \item 右边的$\mathcal{L}_{D}(\hat{h})-\mathcal{L}_{D}(\hat{h^{*}})$已经被定理2控制住了。
+            \item $\beta^{'},\beta^{''}$是伯恩斯坦假设中的常数。当它们取1时，
+            超越风险以高概率在$O(\frac{1}{mn}+\frac{1}{m})$之下。
+        \end{itemize}
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}
+    \frametitle{4. 次韦伯分布损失函数：学习率}
+    在这一节，作者给出了双层分布框架下，以次韦伯分布为损失函数的泛化误差的界（学习率）。
+    \begin{definition}[次韦伯分布]
+        \includegraphics[width=1\textwidth]{pictures/def4.png}
+    \end{definition}
+    \pause
+    次韦伯分布是一种厚尾分布（heavy-tail）。
+\end{frame}
+
+\begin{frame}
+    % 两列
+    \frametitle{4. 次韦伯分布损失函数：学习率}
+    \begin{columns}[T] % align columns
+        \begin{column}{.5\textwidth}
+            厚尾分布的例子：
+            \begin{center}
+                \includegraphics[width=1\textwidth]{pictures/heavytail.png}
+            \end{center}
+            % 添加图片来源
+            \tiny{图片来源：\url{https://adamwierman.com/wp-content/uploads/2021/05/book-05-11.pdf
+            }}
+        \end{column}%
+        \begin{column}{.5\textwidth}
+            \pause
+            \begin{itemize}
+                \item $\alpha$越小，分布的尾部越厚。
+                \pause
+                \item 极端事件的概率更高。损失函数在更多数据点上取值更大。（数据不好/模型差/选取loss原因）
+                \pause
+                \item 条件更加苛刻（甚至超过了指数分布的尾巴），推导也更困难。
+                \pause
+                \item 和之前{\color{red}{伯恩斯坦条件}}不同！伯恩斯坦条件能推出{\color{red}{次高斯}}的bound。
+            \end{itemize}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}
+    \frametitle{4. 次韦伯分布损失函数：学习率}
+    补充：伯恩斯坦条件推出次高斯 \url{https://www.stat.cmu.edu/~arinaldo/Teaching/36709/S19/Scribed_Lectures/Feb5_Aleksandr.pdf}
+    \begin{center}
+        \includegraphics[width=0.5\textwidth]{pictures/ber_gau.png}
+    \end{center}
+\end{frame}
+
+\begin{frame}
+    \frametitle{4. 次韦伯分布损失函数：学习率}
+    对于厚尾分布，许多\textbf{集中不等式}（比如之前提的霍夫丁）{\color{red}{不能}}使用，自然需要新的方法。下面是一些定义：
+    \begin{itemize}
+        \item $\Vert h\Vert_{L_{2}(\mu)} $表示Banach空间$L_{2}(\mathcal{X},\mu)$。（完备赋范向量空间）
+        \item $D$是半经验分布，$P$是元分布。
+        \item $\Vert h\Vert_{L_{2}(D)} = (\frac{1}{m}\sum_{i=1}^{m}\mathbb{E}_{X\sim D_{i}}[h(X)]^{2})^{1/2}$
+        \item $\Vert h\Vert_{L_{2}(P)} = (\mathbb{E}_{D_{i}\sim P}\mathbb{E}_{X\sim D_{i}}[h(X)]^{2})^{1/2}$
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{4. 次韦伯分布损失函数：学习率}
+    \begin{block}{假设：小球条件}
+        \begin{center}
+            \includegraphics[width=1\textwidth]{pictures/ass4.png}
+        \end{center}
+    \end{block}
+    \begin{alertblock}{Remark}
+        \begin{itemize}
+            \item 小球条件是对独立同分布的数据产生过程的假设。
+            \pause
+            \item 在高等概率论中，泛化误差常常要用集中不等式。
+            直观上，只有当损失函数的各阶矩很好时，
+            \textbf{经验风险}会以{\color{red}{高概率}}\textbf{集中}在\textbf{总体风险}附近。
+            \pause
+            \item 但对于厚尾分布不适用！（另一定义：矩母函数发散）
+        \end{itemize}
+    \end{alertblock}
+\end{frame}
+
+
+\begin{frame}
+    \frametitle{4. 次韦伯分布损失函数：学习率}
+    \begin{block}{假设：小球条件}
+        \begin{center}
+            \includegraphics[width=1\textwidth]{pictures/ass4.png}
+        \end{center}
+    \end{block}
+    \begin{alertblock}{Remark}
+        \begin{itemize}
+            \item 于是小球条件被提出。
+            \pause
+            \item 弱条件$\Vert h\Vert_{L_{p}(P)}\leq c \Vert h\Vert_{L_{2}(P)}$就能推出。
+            \pause
+            \item 假设(b)是把$D_{i}$看成从$P$产生的随机变量
+        \end{itemize}
+    \end{alertblock}
+\end{frame}
+\begin{frame}
+    \frametitle{4. 次韦伯分布损失函数：学习率}
+    \begin{block}{假设：小球条件}
+        \begin{center}
+            \includegraphics[width=1\textwidth]{pictures/ass4.png}
+        \end{center}
+    \end{block}
+    \begin{alertblock}{Remark}
+        \begin{itemize}
+            \item 假设(a)仅需要$\mathcal{H}\subset L_{2}(D)$以高概率成立。（后面我会解释$\mathcal{H}-\mathcal{H}$的原因）
+            \pause
+            \item 该条件并不严苛，因为D是从P中独立同分布抽样得到的。
+            \pause
+            \item 小球条件首次用于异质性数据产生过程。
+        \end{itemize}
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}
+    \frametitle{4.1 小球条件下参与客户的学习率}
+    回忆：$\hat{h}^{*} = \arg\min_{h\in \mathcal{H}}\mathcal{L}_{D}(h) $。
+    本节聚焦于度量$\Vert h - \hat{h}^{*} \Vert_{L_{2}(D)}^{2}$，即$h$与$\hat{h}^{*}$在半经验分布
+    下的$L_{2}$距离（对应平方损失函数）。\\
+    \pause
+    对于$\forall h \in \mathcal{H}$，有:
+    \begin{center}
+        \includegraphics[width = 1\textwidth]{pictures/equation4_1.png}
+    \end{center}
+    其中$\xi_{i}^{j} = \hat{h}^{*}(X_{i}^{j})-Y_{i}^{j} $。
+    \pause
+    由于$\hat{h} = \arg\min_{h\in \mathcal{H}}\mathcal{L}_{S}(h)$，
+    所以$\mathcal{L}_{S}(\hat{h}) - \mathcal{L}_{S}(\hat{h}^{*})\leq 0$。
+    如果$\Vert h - \hat{h}^{*} \Vert_{L_{2}(D)}^{2}$很大，那么上式也有很大的概率大于0。
+    因为$\mathcal{L}_{S}(\hat{h}) - \mathcal{L}_{S}(\hat{h}^{*})\leq 0$，所以大概率上$\Vert \hat{h} - \hat{h}^{*} \Vert_{L_{2}(D)}^{2}$很小。\\
+    前面的假设之所以用$\mathcal{H}-\mathcal{H}$在这里就能看得很清楚了。（是一种泛函）\\
+    \pause
+    为了度量第一项，我们引入\textbf{拉德马赫复杂度}。
+\end{frame}
+
+\begin{frame}
+    \frametitle{4.1 小球条件下参与客户的学习率}
+    \begin{definition}[拉德马赫复杂度]
+        \begin{center}
+            \includegraphics[width = 1\textwidth]{pictures/def5.png}
+        \end{center}
+    \end{definition}
+    \pause
+
+    标量$\omega_{mn}(\eta)$度量了用户本地函数集合$\{\mathcal{H}- \mathcal{H}\bigcap sB_{2}^{m}\}$。
+    注意，$\omega_{mn}(\eta)$仅仅跟假设集$\mathcal{H}$和半经验分布$D$抽出的样本有关。
+    % 需要解释一下拉的马和复杂度
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{4.1 小球条件下参与客户的学习率}
+    \begin{center}
+        \includegraphics[width = 1\textwidth]{pictures/thm4.png}
+    \end{center}
+    \pause
+    \begin{alertblock}{Remark}
+        \begin{itemize}
+            \item 异质性联邦学习的、厚尾分布的首个泛化误差结果。
+            \pause
+            \item 假设空间的“大小”（复杂度）和噪声的“大小”（厚尾分布）在异质性联邦学习的泛化误差中十分重要。
+            \pause
+            \item $V_{i}^{j}$的尾部越厚，$\delta_{mn}$越大。
+        \end{itemize}
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}
+    \frametitle{4.1 小球条件下参与客户的学习率}
+    \begin{center}
+        \includegraphics[width = 1\textwidth]{pictures/thm4.png}
+    \end{center}
+    \pause
+    \begin{alertblock}{Remark}
+        \begin{itemize}
+            \item 当然，$\delta_{mn}$随$mn$和$\iota $（与厚尾正相关）的增大而减小。
+            \pause
+            \item 为了让不等式成立的概率更高，$\delta_{mn}$要小。
+            \pause
+            \item 即，固定$mn$，$V_{i}^{j}$的尾部越厚，$\delta_{mn}$越大，$\Vert h - \hat{h}^{*} \Vert_{L_{2}(D)}^{2}$收敛越慢。
+        \end{itemize}
+    \end{alertblock}
+\end{frame}
+\begin{frame}
+    \frametitle{4.1 小球条件下参与客户的学习率}
+    \begin{center}
+        \includegraphics[width = 1\textwidth]{pictures/col1.png}
+    \end{center}
+    \begin{alertblock}{Remark}
+        推论1给出了半经验风险在次韦伯分布下的界。收敛速率是$O(\frac{1}{mn^{\frac{1}{2} - \iota}})$，
+        相比于定理2的$O(\frac{1}{\sqrt{mn}})$，收敛速率更慢。
+    \end{alertblock}
+    \pause
+    回顾定理2：
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/thm2.png}
+    \end{center}
+\end{frame}
+
+\begin{frame}
+    \frametitle{4.2 小球条件下未参与客户的学习率}
+    为了分析未参与客户的学习率，我们聚焦于$\Vert h - h^{*} \Vert_{L_{2}(P)}^{2}$。
+    这里集合从半经验分布$D$到元分布$P$，所以拉德马赫复杂度的定义也要改变。
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/def6.png}
+    \end{center}
+    \pause
+    标量$\omega_{m}(\eta)$度量了$\{\mathcal{H}- \mathcal{H}\bigcap sB_{2}\}$的复杂度。
+\end{frame}
+
+\begin{frame}
+    \frametitle{4.2 小球条件下未参与客户的学习率}
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/thm5.png}
+    \end{center}
+    \pause
+    定理5首次给出了异质性联邦学习的、厚尾分布损失函数的、未参与客户的泛化误差界。
+\end{frame}
+
+
+\begin{frame}
+    \frametitle{4.2 小球条件下未参与客户的学习率}
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/col2.png}
+    \end{center}
+    \pause
+    \begin{alertblock}{Remark}
+        \begin{itemize}
+            \item 推论2给出了总体风险在次韦伯分布下的界，$O(\frac{1}{mn^{\frac{1}{2}-\eta}}+\frac{1}{m^{\frac{1}{2}-\eta}})$。
+            \pause
+            \item 相比于定理3的$O(\frac{1}{mn}+\frac{1}{m})$，收敛速率更慢了。
+            \pause
+            \item 概率取决于$\eta,m,n(\eta \in (0,1/2))$。
+        \end{itemize}
+    \end{alertblock}
+\end{frame}
+\begin{frame}
+    \frametitle{5 相关工作}
+    \begin{center}
+        \includegraphics[width=1\textwidth]{pictures/tabel1.png}
+    \end{center}
+\end{frame}
+\begin{frame}
+    \frametitle{6 总结}
+    \begin{exampleblock}{双层分布框架}
+        \begin{center}
+            \includegraphics[width=1\textwidth]{pictures/2_level.png}
+        \end{center}
+    \end{exampleblock}
+\end{frame}
+\begin{frame}
+    \frametitle{6 总结}
+    \begin{exampleblock}{双层分布框架}
+        \begin{center}
+            \includegraphics[width=1\textwidth]{pictures/relationship.png}
+        \end{center}
+    \end{exampleblock}
+\end{frame}
+\begin{frame}
+    \frametitle{6 总结}
+    \begin{exampleblock}{泛化误差界——更快的速率}
+        \begin{center}
+            \includegraphics[width=1\textwidth]{pictures/fastrates.png}
+        \end{center}
+    \end{exampleblock}
+\end{frame}
+
+\begin{frame}
+    \frametitle{6 总结}
+    \begin{exampleblock}{泛化误差界——厚尾分布}
+        \begin{center}
+            \includegraphics[width=1\textwidth]{pictures/heavytail_conclusion.png}
+        \end{center}
+    \end{exampleblock}
+\end{frame}
+\begin{frame}
+    \frametitle{7 附录}
+    \begin{itemize}
+        \item 原文链接：\url{https://openreview.net/pdf?id=-EHqoysUYLx}
+        \item 主要参考了\href{https://link.springer.com/book/10.1007/978-0-387-84858-7}{\textbf{The Elements of Statistical Learning}}以及\href{https://cs.nyu.edu/~mohri/mlbook/}{\textbf{Foundations of Machine Learning(Second Edition)}}（点击访问）
+        \item 本展示是\LaTeX{}制作的beamer，tex源码已上传到\href{https://github.com/Borel-Peng/ml-}{\textbf{github}}
+        \item 实验源码同上链接。
+    \end{itemize}
+\end{frame}
+% 最后一页 感谢
+\begin{frame}
+    \begin{center}
+        \Huge{谢谢！}
+    \end{center}
+\end{frame}
+\end{document}
